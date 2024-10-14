@@ -21,7 +21,7 @@ on load:
 		send "连接完毕：%{-database}%"
 	
 	set {_tabexsit} to sql_tabexist({-database},"connect_log")
-	if {_tabexsit} is "false":
+	if {_tabexsit} is false:
 		sql_act({-database},"CREATE TABLE `connect_log` (`data` TEXT NULL)CHARACTER SET = utf8mb4 COLLATE='utf8mb4_unicode_ci'")
 		sql_act({-database},"ALTER TABLE `connect_log` ADD COLUMN `time` TEXT NULL")
 
@@ -30,7 +30,7 @@ on load:
 #  函数区
 ###################################################################
 	
-function sql_dbexist(database: object,dbname: text):: text:
+function sql_dbexist(database: object,dbname: text):: boolean:
 	##检测库是否存在
 	#获取数据
 	set {_metadata} to {_database}.getMetaData()
@@ -40,10 +40,10 @@ function sql_dbexist(database: object,dbname: text):: text:
 	while {_resultSet}.next():
 		if {_resultSet}.getString(1) is {_dbname}:
 			{_resultSet}.close()
-			return "true"
-	return "false"		
+			return true
+	return false	
 	
-function sql_tabexist(database: object,tabname: text):: text:
+function sql_tabexist(database: object,tabname: text):: boolean:
 	##检测表是否存在
 	#获取数据
 	set {_metadata} to {_database}.getMetaData()
@@ -52,10 +52,10 @@ function sql_tabexist(database: object,tabname: text):: text:
 	# 判断结果集是否有数据
 	if {_resultSet}.next():
 		{_resultSet}.close()
-		return "true"
+		return true
 	else:
 		{_resultSet}.close()
-		return "false"
+		return false
 
 	
 function sql_disconnect(database: object):
@@ -84,7 +84,7 @@ function sql_db_connect(url: text, db: text,usr: text, pwd: text):: object:
 	else:
 		#自动创建表
 		set {_dbexist} to sql_dbexist({_database},"{_db}")
-		if {_database} is "false":
+		if {_database} is false:
 			sql_act({_database},"CREATE DATABASE `%{_db}%`")
 			sql_act({_database},"ALTER DATABASE %{_db}% CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci")
 		sql_act({_database},"USE `%{_db}%`")
@@ -142,7 +142,7 @@ function sql_rm_tab_line_is_val(database: object, table: text, line: text, datat
 		
 	#关闭接口
 	{_preparedStatement}.close()
-function sql_search_table_val(database: object, table: text, column: text, datatype: text, val: text)::text:
+function sql_search_table_val(database: object, table: text, column: text, datatype: text, val: text)::boolean:
 	##搜索指定表的值
 	#sql语句
 	set {_sql} to "SELECT COUNT(*) FROM %{_table}% WHERE %{_column}% = ?"
@@ -172,9 +172,9 @@ function sql_search_table_val(database: object, table: text, column: text, datat
 	
 	# 如果_count 大于 0，说明  存在
 	if {_count} > 0:
-		return "true"
+		return true
 	else:
-		return "false"
+		return false
 
 
 function sql_change_table_val(database: object, table: text, column: text, datatype: text, val: text, change_column: text, change_datatype: text, change_val: text):
@@ -210,3 +210,17 @@ function sql_change_table_val(database: object, table: text, column: text, datat
 
 	# 关闭
 	{_preparedStatement}.close()
+	{_connection}.close()
+	
+function sql_check_column(database: object, table: text, column: text) :: boolean:
+	# 获取数据库元数据
+	set {_metadata} to {_database}.getMetaData()
+
+	# 获取列信息
+	set {_columns} to {_metadata}.getColumns(null, null, {_table}, {_column})
+	
+	# 检查是否存在该列
+	if {_columns}.next():
+		return true
+	else:
+		return false
