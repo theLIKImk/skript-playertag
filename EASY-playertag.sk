@@ -81,7 +81,7 @@ on join:
 	set {_return} to sql_search_table_val({_plyt_sql},"player_data","uuid","text","%{_ply_uuid}%")
 	
 	#没查询到玩家就创建条目
-	if {_return} is "false":
+	if {_return} is false:
 		sql_act({_plyt_sql},"INSERT INTO `playertag`.`player_data` (`player`,`uuid`,`setid`,`id`,`prefix`,`suffix`) VALUES ('%player%','%{_ply_uuid}%','10000','10000','%{easy-playertag-data::the-global::prefix}%','%{easy-playertag-data::the-global::suffix}%')")
 	
 	easy_playertag_sql_load("ply")
@@ -89,7 +89,7 @@ on join:
 ############################################################################################################
 		
 command /playertag [<text>] [<text>] [<text>] [<text>] [<text>] [<text>] [<text>] [<text>] [<text>] [<text>]:
-	#permission: easy.playertag.use
+	permission: easy.playertag.use
 	trigger:		
 		#检测是否为玩家
 		if player is not player:
@@ -166,6 +166,17 @@ command /playertag [<text>] [<text>] [<text>] [<text>] [<text>] [<text>] [<text>
 				send "    &6&l|&7&l> &4这个称号不可获取" to {_send-to}
 			else if {_return} is 4:
 				send "    &6&l|&7&l> &4这个称号活动限定" to {_send-to}
+			else if {_return} is 5:
+				send "    &6&l|&7&l> &4钱不够哦" to {_send-to}
+			else if {_return} is 6:
+				set {_gettag} to the value of placeholder "easy-playertag-tagid_%arg-2%"
+				set {_tag_money} to {easy-playertag-data::the-global::tags::id::%arg-2%::price}
+				send "&8&l==============================" to {_send-to}
+				send "  " to {_send-to}
+				send "  &a%{_tag_money}%元支付成功 " to {_send-to}
+				send "  &a获取了 %{_gettag}% " to {_send-to}
+				send "  " to {_send-to}
+				send "&8&l==============================" to {_send-to}
 
 		else if arg-1 is "alltags":
 			set {_return} to easy_playertag_show_all_tags(player)
@@ -215,6 +226,23 @@ command /playertag [<text>] [<text>] [<text>] [<text>] [<text>] [<text>] [<text>
 					send "&8&l||  &e&4&l参数错误" to {_send-to}
 					send "&8&l||  &3/playertag admin del &l<ID> " to {_send-to}
 					send "&8&l||" to {_send-to}
+			
+			else if arg-2 is "give":
+				if arg-4 is set:
+					set {_id} to arg-3 parsed as number
+					set {_player} to arg-4 parsed as player
+					set {_return} to easy_playertag_give_tag({_player},{_id})
+					if {_return} is 0:
+						send "    &6&l|&7&l> &e给予给%arg-3%" to {_send-to}
+					else if {_return} is 1:
+						send "    &6&l|&7&l> &4%arg-3%他有了!" to {_send-to}
+					else if {_return} is 2:
+						send "    &6&l|&7&l> &4这个称号似乎不存在" to {_send-to}
+				else:
+					send "&8&l||" to {_send-to}
+					send "&8&l||  &e&4&l参数错误" to {_send-to}
+					send "&8&l||  &3/playertag admin give &l<ID> <Player> " to {_send-to}
+					send "&8&l||" to {_send-to}
 				
 			else if arg-2 is "help":
 				send "&8&l==============================" to {_send-to}
@@ -241,15 +269,22 @@ function easy_playertag_sql_init():
 	
 	#初始化
 	set {_tabexist} to sql_tabexist({_plyt_sql},"tags")
-	if {_tabexist} is "false":
+	if {_tabexist} is false:
 		sql_act({_plyt_sql},"CREATE TABLE `tags` (`id` INT NULL)CHARACTER SET = utf8mb4 COLLATE='utf8mb4_unicode_ci'")
 		sql_act({_plyt_sql},"ALTER TABLE `tags` ADD COLUMN `tag` TEXT NULL")
 		sql_act({_plyt_sql},"ALTER TABLE `tags` ADD COLUMN `type` TEXT NULL")
 		sql_act({_plyt_sql},"ALTER TABLE `tags` ADD COLUMN `price` FLOAT NULL")
 		sql_act({_plyt_sql},"ALTER TABLE `tags` ADD COLUMN `usetime` INT NULL")
 		sql_act({_plyt_sql},"ALTER TABLE `tags` ADD COLUMN `group` TEXT NULL")
-		sql_act({_plyt_sql},"INSERT INTO `playertag`.`global_data` (`id`, `tag`,`type`,`price`,`usetime`,`group`) VALUES (10000,'&l玩家','free',0,0,'default')")
+		sql_act({_plyt_sql},"ALTER TABLE `tags` ADD COLUMN `setcmd` TEXT NULL")
+		sql_act({_plyt_sql},"ALTER TABLE `tags` ADD COLUMN `unsetcmd` TEXT NULL")
+		sql_act({_plyt_sql},"INSERT INTO `playertag`.`global_data` (`id`, `tag`,`type`,`price`,`usetime`,`group`,`setcmd`，`unsetcmd`) VALUES (10000,'&l玩家','free',0,0,'default','','')")
 	
+	#更新
+	set {_return} to sql_check_column({_plyt_sql},"tags","setcmd")
+	if {_return} is false:
+		sql_act({_plyt_sql},"ALTER TABLE `tags` ADD COLUMN `setcmd` TEXT NULL")
+		sql_act({_plyt_sql},"ALTER TABLE `tags` ADD COLUMN `unsetcmd` TEXT NULL")
 	
 	set {_tabexist} to sql_tabexist({_plyt_sql},"global_data")
 	if {_tabexist} is "false":
@@ -258,7 +293,7 @@ function easy_playertag_sql_init():
 		sql_act({_plyt_sql},"INSERT INTO `playertag`.`global_data` (`prefix`, `suffix`) VALUES ('%{easy-playertag-data::the-global::prefix}%', '%{easy-playertag-data::the-global::suffix}%')")
 	
 	set {_tabexist} to sql_tabexist({_plyt_sql},"player_data")
-	if {_tabexist} is "false":
+	if {_tabexist} is false:
 		sql_act({_plyt_sql},"CREATE TABLE `player_data` (`player` TEXT NULL)CHARACTER SET = utf8mb4 COLLATE='utf8mb4_unicode_ci'")
 		sql_act({_plyt_sql},"ALTER TABLE `player_data` ADD COLUMN `uuid` TEXT NULL")
 		sql_act({_plyt_sql},"ALTER TABLE `player_data` ADD COLUMN `setid` INT NULL")
@@ -300,7 +335,7 @@ function easy_playertag_sql_load(type: text):
 		while {-get_db_data}.next():
 			set {_player_UUID} to {-get_db_data}.getString("uuid")
 			set {_player} to get_player_by_uuid("%{_player_UUID}%")
-			set {easy-playertag-data::%{_player}%::setid} to {-get_db_data}.getInt("setid")
+			set {easy-playertag-data::%{_player}%::tags::setid} to {-get_db_data}.getInt("setid")
 			set {_player_ids} to {-get_db_data}.getString("id")
 			set {_player_tags_id::*} to split {_player_ids} at ","
 			loop {_player_tags_id::*}:
@@ -332,7 +367,7 @@ function easy_playertag_add_tag(tag: text, type: text, price: number, usetime: n
 
 	#连接数据库
 	set {_plyt_sql} to sql_db_connect({easy-playertag_db_host},{easy-playertag_db_db},{easy-playertag_db_user},{easy-playertag_db_password})
-	sql_act({_plyt_sql},"INSERT INTO `playertag`.`tags` (`id`, `tag`,`type`,`price`,`usetime`,`group`) VALUES (%{_id}%,'%{_tag}%','%{_type}%',%{_price}%,%{_usetime}%,'%{_group}%')")
+	sql_act({_plyt_sql},"INSERT INTO `playertag`.`tags` (`id`, `tag`,`type`,`price`,`usetime`,`group`,`setcmd`,`unsetcmd`) VALUES (%{_id}%,'%{_tag}%','%{_type}%',%{_price}%,%{_usetime}%,'%{_group}%','','')")
 	return 0
 
 function easy_playertag_add_tag_ID(id: number, tag: text, type: text, price: number, usetime: number, group :text)::number:
@@ -351,7 +386,7 @@ function easy_playertag_add_tag_ID(id: number, tag: text, type: text, price: num
 		
 		#连接数据库
 		set {_plyt_sql} to sql_db_connect({easy-playertag_db_host},{easy-playertag_db_db},{easy-playertag_db_user},{easy-playertag_db_password})
-		sql_act({_plyt_sql},"INSERT INTO `playertag`.`tags` (`id`, `tag`,`type`,`price`,`usetime`,`group`) VALUES (%{_id}%,'%{_tag}%','%{_type}%',%{_price}%,%{_usetime}%,'%{_group}%')")
+		sql_act({_plyt_sql},"INSERT INTO `playertag`.`tags` (`id`, `tag`,`type`,`price`,`usetime`,`group`,`setcmd`,`unsetcmd`) VALUES (%{_id}%,'%{_tag}%','%{_type}%',%{_price}%,%{_usetime}%,'%{_group}%','','')")
 		sql_disconnect({_plyt_sql})
 		return 0
 
@@ -372,16 +407,25 @@ function easy_playertag_remove_tag(id: number)::number:
 		return 1
 
 		
-function easy_playertag_give_tag(player: player, id: number)::number:
+function easy_playertag_give_tag(ply: player, id: number)::number:
 	#给予称号
-	if {easy-playertag-data::%{player}%::tags::id::%{_id}%} is set:
+	if {easy-playertag-data::%{_ply}%::tags::id::%{_id}%} is set:
 		return 1
 	else:
-		set {easy-playertag-data::%{player}%::tags::id::%{_id}%} to  {_id}
+		if {easy-playertag-data::%{_ply}%::tags::id::%{_tagID}%} is not set:
+			return 2
+
+		set {easy-playertag-data::%{_ply}%::tags::id::%{_id}%} to {_id}
 		
 		#连接数据库
 		set {_plyt_sql} to sql_db_connect({easy-playertag_db_host},{easy-playertag_db_db},{easy-playertag_db_user},{easy-playertag_db_password})
-		sql_rm_tab_line_is_val({_plyt_sql},"tags","id","number-long","%{_id}%")
+
+		#浏览所有列表
+		loop {easy-playertag-data::%{_ply}%::tags::id::*}:
+			set {_list} to "%{_list}%,%loop-value%"
+				
+		set {_ply_uuid} to uuid of {_ply}
+		sql_change_table_val({_plyt_sql},"player_data","uuid","text","%{_ply_uuid}%","id","text","%{_list}%")
 		sql_disconnect({_plyt_sql})
 		return 0
 		
@@ -454,6 +498,17 @@ function easy_playertag_player_get_tag(ply: player,tagID: text) :: number:
 			else if {easy-playertag-data::the-global::tags::id::%{_tagID}%::type} is "event":
 				return 4
 			else:
+				if {easy-playertag-data::the-global::tags::id::%{_tagID}%::type} is "commodity":
+					#获取玩家的钱和称号的钱
+					set {_xc_bal} to the value of placeholder "xconomy_balance_value" for {_ply}
+					set {_tag_money} to {easy-playertag-data::the-global::tags::id::%{_tagID}%::price}
+					#检测金钱
+					if {_xc_bal} < {_tag_money}:
+						return 5
+					else:
+						make console execute command "money take %{_ply}% %{_tag_money}%"
+						set {_buyreturn} to 6
+				
 				set {easy-playertag-data::%{_ply}%::tags::id::%{_tagID}%} to "%{_tagID}%"
 				
 				
@@ -468,7 +523,10 @@ function easy_playertag_player_get_tag(ply: player,tagID: text) :: number:
 				sql_change_table_val({_plyt_sql},"player_data","uuid","text","%{_ply_uuid}%","id","text","%{_list}%")
 				sql_disconnect({_plyt_sql})
 				
-				return 0
+				if {_buyreturn} is set:
+					return 6
+				else:
+					return 0
 
 function get_player_by_uuid(uuid: text)::player:
 	# 使用 Bukkit API 根据 UUID 获取玩家对象
