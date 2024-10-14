@@ -8,7 +8,7 @@ on load:
 	set {easy-playertag_db_host} to "jdbc:mysql://127.0.0.1:3306/"
 	set {easy-playertag_db_db} to "playertag"
 	set {easy-playertag_db_user} to "root"
-	set {easy-playertag_db_password} to "liki2333"
+	set {easy-playertag_db_password} to "passwd"
 	set {easy-playertag_the_global_prefix} to "&7&l|&f"
 	set {easy-playertag_the_global_suffix} to "&7&l|&f"
 	
