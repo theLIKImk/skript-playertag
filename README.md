@@ -16,7 +16,7 @@ skript插件脚本编写的玩家称号插件
 	set {easy-playertag_db_user} to "root"
 	set {easy-playertag_db_password} to "passwd"
 ```
-2. 使用聊天格式化插件在每条聊天消息前加上PAPI%easy-playertag_player_tag%
+2. 使用聊天格式化插件在每条聊天消息前加上PAPI变量`%easy-playertag_player_tag%`
 3. 重载即可
 
 ## PAPI
