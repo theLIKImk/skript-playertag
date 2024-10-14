@@ -210,4 +210,3 @@ function sql_change_table_val(database: object, table: text, column: text, datat
 
 	# 关闭
 	{_preparedStatement}.close()
-	{_connection}.close()
