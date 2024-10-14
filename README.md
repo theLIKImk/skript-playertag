@@ -2,11 +2,11 @@
 skript插件脚本编写的玩家称号插件
 
 ## 安装
-1. 先决条件：spigot/paper服务端、PlaceholderAPI插件、聊天格式插件、mysql/maridb
+1. 先决条件：spigot/paper服务端、PlaceholderAPI插件、聊天格式插件、mysql/maridb数据库
 2. 安装skript
 3. 安装skript拓展:skript-placeholders、skript-reflect
-4. 脚本放入`[yourserver]\ plugins\Skript\scripts\`下
-5. 重启服务器或执行`sk reload <对应脚本>`
+4. 脚本放入`[yourserver]\ plugins\Skript\scripts\`下(没有文件夹自行创建)
+5. 重启服务器
 
 ## 使用
 1. 更改自定义数据库值：
@@ -16,9 +16,8 @@ skript插件脚本编写的玩家称号插件
 	set {easy-playertag_db_user} to "root"
 	set {easy-playertag_db_password} to "passwd"
 ```
-2. 使用聊天格式化
-3. 插件在每条聊天消息前加上PAPI%easy-playertag_player_tag%
-4. 重载即可
+2. 使用聊天格式化插件在每条聊天消息前加上PAPI%easy-playertag_player_tag%
+3. 重载即可
 
 ## PAPI
 玩家当前称号显示 `%easy-playertag_player_tag%`  
